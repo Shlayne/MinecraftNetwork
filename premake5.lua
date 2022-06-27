@@ -1,8 +1,8 @@
 include "Dependencies/premake/Custom/solutionitems.lua"
 
-workspace "__WORKSPACE_NAME__"
+workspace "MinecraftNetwork"
 	architecture "x86_64"
-	startproject "__PROJECT_NAME__"
+	startproject "Server"
 
 	configurations { "Profile", "Debug", "Release", "Dist" }
 
@@ -37,4 +37,6 @@ include "Dependencies/premake/Custom/usestdpreproc.lua"
 include "Dependencies/Dependencies.lua"
 
 -- Add any projects here with 'include "__PROJECT_NAME__"'
-include "__PROJECT_NAME__"
+include "Network"
+include "Server"
+include "Client"

@@ -3,7 +3,7 @@ LibraryDir = {}
 Library = {}
 
 -- Include Directories
---	IncludeDir["__PROJECT_NAME__"] = "%{__PROJECT_DIR_NAME__}/__PROJECT_INCLUDE_PATH__"
+	IncludeDir["asio"] = "%{wks.location}/Network/Dependencies/asio-1.22.1/include/"
 
 -- Library Directories
 --	LibraryDir["__LIBRARY_DIR_NAME__"] = "%{__LIBRARY_DIR_NAME__}/__LIBRARY_DIR_PATH__"

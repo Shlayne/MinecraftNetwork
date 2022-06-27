@@ -1,3 +1,3 @@
-# ProjectTemplate
+# Networking
 
-My template for creating visual studio solutions and projects.
+I'm attempting to make a client-server network and peer-to-peer network use mostly the same code.

@@ -7,7 +7,7 @@ namespace net
 	template<typename ID>
 	Client<ID>::~Client()
 	{
-		Disconnect(true);
+		Disconnect();
 	}
 
 	template<typename ID>
@@ -26,7 +26,7 @@ namespace net
 	bool Client<ID>::Connect(std::string_view address, uint16_t port)
 	{
 		if (IsConnected())
-			Disconnect(true);
+			Disconnect();
 
 		try
 		{
@@ -50,11 +50,11 @@ namespace net
 	}
 
 	template<typename ID>
-	void Client<ID>::Disconnect(bool graceful)
+	void Client<ID>::Disconnect()
 	{
 		if (m_pConnection)
 		{
-			m_pConnection->Disconnect(graceful);
+			m_pConnection->Disconnect();
 			m_Context.stop();
 			if (m_ContextThread.joinable())
 				m_ContextThread.join();

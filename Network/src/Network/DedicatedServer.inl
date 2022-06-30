@@ -91,17 +91,15 @@ namespace net
 		}
 
 		if (clientsRemoved)
-			std::erase_if(m_Clients, [](const auto& crpClient) { return !(crpClient != nullptr && crpClient->IsConnected()); });
+			std::erase_if(m_Clients, [](const auto& crpClient) { return crpClient == nullptr; });
 	}
 
 	template<typename ID>
-	void DedicatedServer<ID>::Disconnect(std::shared_ptr<Connection<ID>> pConnection, bool graceful)
+	void DedicatedServer<ID>::Disconnect(std::shared_ptr<Connection<ID>> pConnection)
 	{
-		// TODO: the whole graceful disconnect is a race condition, figure it out or remove it.
-		pConnection->m_DisconnectedGracefully = graceful;
 		OnDisconnect(pConnection);
 		pConnection.reset();
-		std::erase_if(m_Clients, [](const auto& crpClient) { return !(crpClient != nullptr && crpClient->IsConnected()); });
+		std::erase_if(m_Clients, [](const auto& crpClient) { return crpClient == nullptr; });
 	}
 
 	template<typename ID>

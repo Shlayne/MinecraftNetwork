@@ -18,7 +18,7 @@ namespace net
 	public:
 		virtual void MessageOne(std::shared_ptr<Connection<ID>> pConnection, const Message<ID>& crMessage) = 0;
 		virtual void MessageAll(const Message<ID>& crMessage, std::shared_ptr<Connection<ID>> pIgnoredConnection = nullptr) = 0;
-		virtual void Disconnect(std::shared_ptr<Connection<ID>> pConnection, bool graceful = false) = 0;
+		virtual void Disconnect(std::shared_ptr<Connection<ID>> pConnection) = 0;
 	public:
 		virtual void OnValidate(std::shared_ptr<Connection<ID>> pConnection) = 0;
 		virtual void OnInvalidate(std::shared_ptr<Connection<ID>> pConnection) = 0;

@@ -18,7 +18,7 @@ namespace net
 		inline const TSDeque<OwnedMessage<ID>>& GetIncomingMessageQueue() const;
 	public:
 		bool Connect(std::string_view address, uint16_t port);
-		void Disconnect(bool graceful = false);
+		void Disconnect();
 		bool IsConnected() const;
 	public:
 		void Send(const Message<ID>& crMessage);

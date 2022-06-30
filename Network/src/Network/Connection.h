@@ -23,7 +23,7 @@ namespace net
 	public:
 		void ConnectToClient(IServer<ID>* pServer, uint32_t id);
 		void ConnectToServer(const asio::ip::tcp::resolver::results_type& crEndpoints);
-		void Disconnect(bool graceful = false);
+		void Disconnect();
 		bool IsConnected() const;
 	public:
 		uint32_t GetID() const;
@@ -52,12 +52,6 @@ namespace net
 		// DecicatedServer -> DecicatedServer*
 		// PeerToPeerNode  -> PeerToPeerNode*
 		IServer<ID>* m_pServer = nullptr;
-	private:
-		friend class DedicatedServer<ID>;
-		//friend class PeerToPeerNode<ID>;
-		bool m_DisconnectedGracefully = false; // TODO: change how this is set.
-	public:
-		bool DisconnectedGracefully() const;
 	private:
 		uint64_t m_ValidationOut = 0;
 		uint64_t m_ValidationIn = 0;

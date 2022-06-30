@@ -21,7 +21,7 @@ namespace net
 	public:
 		virtual void MessageOne(std::shared_ptr<Connection<ID>> pConnection, const Message<ID>& crMessage) override final;
 		virtual void MessageAll(const Message<ID>& crMessage, std::shared_ptr<Connection<ID>> pConnectionIgnored = nullptr) override final;
-		virtual void Disconnect(std::shared_ptr<Connection<ID>> pConnection, bool graceful = false) override final;
+		virtual void Disconnect(std::shared_ptr<Connection<ID>> pConnection) override final;
 	public:
 		virtual void OnValidate(std::shared_ptr<Connection<ID>> pConnection) override;
 		virtual void OnInvalidate(std::shared_ptr<Connection<ID>> pConnection) override;

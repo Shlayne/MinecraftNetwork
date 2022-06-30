@@ -41,12 +41,12 @@ namespace net
 	}
 
 	template<typename ID>
-	void Connection<ID>::Disconnect(bool graceful)
+	void Connection<ID>::Disconnect()
 	{
 		if (IsConnected())
 		{
 			if (m_Owner == Owner::Server)
-				m_pServer->Disconnect(this->shared_from_this(), graceful);
+				m_pServer->Disconnect(this->shared_from_this());
 			else
 				asio::post(m_rContext, [this]() { m_Socket.close(); });
 		}
@@ -85,6 +85,7 @@ namespace net
 	{
 		// TODO: this is EXTREMELY EASY TO BRUTE-FORCE.
 		// Although it works fine for testing, use a cryptography library or knowledge from CS classes.
+		// Use public/private key thing.
 		data ^= 0xDEADBEEFC0DECAFE;
 		data = ((data & 0xF0F0F0F0F0F0F0F0) >> 4) | ((data & 0x0F0F0F0F0F0F0F0F) << 4);
 		return data ^ 0xC0DEFACE12345678;
@@ -106,7 +107,7 @@ namespace net
 				else
 					AddToIncomingMessageQueue();
 			}
-			else if (!DisconnectedGracefully())
+			else
 			{
 				std::cerr << '[' << (m_Owner == Owner::Server ? "SERVER" : "CLIENT") << "] Read header failed for connection id " << m_ID << ": " << error.message() << '\n';
 				Disconnect();
@@ -122,7 +123,7 @@ namespace net
 		{
 			if (!error)
 				AddToIncomingMessageQueue();
-			else if (!DisconnectedGracefully())
+			else
 			{
 				std::cerr << '[' << (m_Owner == Owner::Server ? "SERVER" : "CLIENT") << "] Read body failed for connection id " << m_ID << ": " << error.message() << '\n';
 				Disconnect();
@@ -161,7 +162,7 @@ namespace net
 					WriteValidation();
 				}
 			}
-			else if (!DisconnectedGracefully())
+			else
 			{
 				std::cerr << '[' << (m_Owner == Owner::Server ? "SERVER" : "CLIENT") << "] Read validation failed for connection id " << m_ID << ": " << error.message() << '\n';
 				Disconnect();
@@ -186,7 +187,7 @@ namespace net
 						WriteHeader();
 				}
 			}
-			else if (!DisconnectedGracefully())
+			else
 			{
 				std::cerr << '[' << (m_Owner == Owner::Server ? "SERVER" : "CLIENT") << "] Write header failed for connection id " << m_ID << ": " << error.message() << '\n';
 				Disconnect();
@@ -206,7 +207,7 @@ namespace net
 				if (!m_OutgoingMessages.Empty())
 					WriteHeader();
 			}
-			else if (!DisconnectedGracefully())
+			else
 			{
 				std::cerr << '[' << (m_Owner == Owner::Server ? "SERVER" : "CLIENT") << "] Write body failed for connection id " << m_ID << ": " << error.message() << '\n';
 				Disconnect();
@@ -225,7 +226,7 @@ namespace net
 				if (m_Owner == Owner::Client)
 					ReadHeader();
 			}
-			else if (!DisconnectedGracefully())
+			else
 			{
 				std::cerr << '[' << (m_Owner == Owner::Server ? "SERVER" : "CLIENT") << "] Write validation failed for connection id " << m_ID << ": " << error.message() << '\n';
 				Disconnect();
@@ -245,11 +246,5 @@ namespace net
 		m_TempIncomingMessage.header.size = 0;
 
 		ReadHeader();
-	}
-
-	template<typename ID>
-	bool Connection<ID>::DisconnectedGracefully() const
-	{
-		return m_DisconnectedGracefully;
 	}
 }

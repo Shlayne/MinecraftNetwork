@@ -19,14 +19,6 @@ public:
 		Send(message);
 	}
 
-	void GracefulDisconnect()
-	{
-		net::Message<MessageType> message = MessageType::Client_GracefulDisconnect;
-		std::cout << "[CLIENT:" << GetID() << "] Gracefully disconnecting...\n";
-		Send(message);
-		Disconnect(true);
-	}
-
 	// Local copy of assigned id.
 public:
 	uint32_t GetID() const { return m_ID; }
@@ -77,7 +69,7 @@ int main()
 
 		if (pKeys[0] && !pOldKeys[0]) client.PingServer();
 		if (pKeys[1] && !pOldKeys[1]) client.MessageOtherClients();
-		if (pKeys[2] && !pOldKeys[2]) client.GracefulDisconnect();
+		if (pKeys[2] && !pOldKeys[2]) client.Disconnect();
 
 		for (uint32_t i = 0; i < 3; i++)
 			pOldKeys[i] = pKeys[i];

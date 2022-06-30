@@ -10,5 +10,4 @@ enum class MessageType : net::IDType
 
 	Client_PingServer,
 	Client_MessageOtherClients,
-	Client_GracefulDisconnect,
 };

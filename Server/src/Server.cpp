@@ -29,10 +29,7 @@ protected:
 
 	virtual void OnDisconnect(std::shared_ptr<net::Connection<MessageType>> pConnection) override
 	{
-		std::cout << "[SERVER] Client " << pConnection->GetID() << " disconnected";
-		if (pConnection->DisconnectedGracefully())
-			std::cout << " gracefully";
-		std::cout << ".\n";
+		std::cout << "[SERVER] Client " << pConnection->GetID() << " disconnected.\n";
 	}
 
 	virtual void OnMessage(std::shared_ptr<net::Connection<MessageType>> pConnection, net::Message<MessageType>& rMessage) override
@@ -50,11 +47,6 @@ protected:
 				std::cout << "[SERVER] Client " << pConnection->GetID() << " messaging other clients.\n";
 				rMessage << pConnection->GetID();
 				MessageAll(rMessage, pConnection);
-				break;
-			}
-			case MessageType::Client_GracefulDisconnect:
-			{
-				pConnection->Disconnect(true);
 				break;
 			}
 		}

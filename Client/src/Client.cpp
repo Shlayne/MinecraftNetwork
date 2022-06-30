@@ -1,7 +1,7 @@
 #include "Common.h"
 #include <Windows.h>
 
-class Client : public net::Client<MessageType>
+class DedicatedClient : public net::DedicatedClient<MessageType>
 {
 public:
 	void PingServer()
@@ -52,7 +52,7 @@ int main()
 		return -1;
 	}
 
-	Client client;
+	DedicatedClient client;
 	client.Connect(address, port);
 
 	bool pKeys[3]{ false, false, false };

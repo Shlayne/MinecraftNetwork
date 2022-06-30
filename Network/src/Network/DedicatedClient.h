@@ -8,11 +8,11 @@
 namespace net
 {
 	template<typename ID>
-	class Client
+	class DedicatedClient
 	{
 	public:
-		Client();
-		virtual ~Client();
+		DedicatedClient();
+		virtual ~DedicatedClient();
 	public:
 		inline TSDeque<OwnedMessage<ID>>& GetIncomingMessageQueue();
 		inline const TSDeque<OwnedMessage<ID>>& GetIncomingMessageQueue() const;
@@ -31,4 +31,4 @@ namespace net
 	};
 }
 
-#include "Network/Client.inl"
+#include "Network/DedicatedClient.inl"

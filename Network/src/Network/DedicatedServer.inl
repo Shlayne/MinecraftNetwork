@@ -64,7 +64,7 @@ namespace net
 	template<typename ID>
 	void DedicatedServer<ID>::MessageOne(std::shared_ptr<Connection<ID>> pConnection, const Message<ID>& crMessage)
 	{
-		if (pConnection && pConnection->IsConnected())
+		if (pConnection != nullptr && pConnection->IsConnected())
 			pConnection->Send(crMessage);
 		else
 			Disconnect(pConnection);
@@ -127,7 +127,7 @@ namespace net
 				std::cout << "[SERVER] New connection: " << socket.remote_endpoint() << '\n';
 
 				std::shared_ptr<Connection<ID>> newConnection = std::make_shared<Connection<ID>>(
-					Connection<ID>::Owner::Server, m_Context, std::move(socket), m_IncomingMessages
+					ConnectionOwner::DedicatedServer, m_Context, std::move(socket), m_IncomingMessages
 				);
 
 				if (OnConnect(newConnection))

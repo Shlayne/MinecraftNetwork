@@ -7,19 +7,14 @@
 
 namespace net
 {
-	template<typename ID>
-	class DedicatedServer;
-
-	//template<typename ID>
-	//class PeerToPeerNode;
+	enum class ConnectionOwner { DedicatedServer, DedicatedClient, PeerToPeerNode };
+	std::ostream& operator<<(std::ostream& rOstream, ConnectionOwner owner);
 
 	template<typename ID>
 	class Connection : public std::enable_shared_from_this<Connection<ID>>
 	{
 	public:
-		enum class Owner { Server, Client }; // This will DEFINETLY be changed/removed.
-	public:
-		Connection(Owner owner, asio::io_context& rContext, asio::ip::tcp::socket&& rrSocket, TSDeque<OwnedMessage<ID>>& rIncomingMessages);
+		Connection(ConnectionOwner owner, asio::io_context& rContext, asio::ip::tcp::socket&& rrSocket, TSDeque<OwnedMessage<ID>>& rIncomingMessages);
 	public:
 		void ConnectToClient(IServer<ID>* pServer, uint32_t id);
 		void ConnectToServer(const asio::ip::tcp::resolver::results_type& crEndpoints);
@@ -40,7 +35,7 @@ namespace net
 
 		void AddToIncomingMessageQueue();
 	private:
-		Owner m_Owner;
+		ConnectionOwner m_Owner;
 		asio::io_context& m_rContext;
 		asio::ip::tcp::socket m_Socket;
 		TSDeque<Message<ID>> m_OutgoingMessages;

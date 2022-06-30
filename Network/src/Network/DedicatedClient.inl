@@ -1,29 +1,29 @@
 namespace net
 {
 	template<typename ID>
-	Client<ID>::Client()
+	DedicatedClient<ID>::DedicatedClient()
 		: m_Socket(m_Context) {}
 
 	template<typename ID>
-	Client<ID>::~Client()
+	DedicatedClient<ID>::~DedicatedClient()
 	{
 		Disconnect();
 	}
 
 	template<typename ID>
-	TSDeque<OwnedMessage<ID>>& Client<ID>::GetIncomingMessageQueue()
+	TSDeque<OwnedMessage<ID>>& DedicatedClient<ID>::GetIncomingMessageQueue()
 	{
 		return m_IncomingMessages;
 	}
 
 	template<typename ID>
-	const TSDeque<OwnedMessage<ID>>& Client<ID>::GetIncomingMessageQueue() const
+	const TSDeque<OwnedMessage<ID>>& DedicatedClient<ID>::GetIncomingMessageQueue() const
 	{
 		return m_IncomingMessages;
 	}
 
 	template<typename ID>
-	bool Client<ID>::Connect(std::string_view address, uint16_t port)
+	bool DedicatedClient<ID>::Connect(std::string_view address, uint16_t port)
 	{
 		if (IsConnected())
 			Disconnect();
@@ -34,7 +34,7 @@ namespace net
 			auto endpoints = resolver.resolve(address, std::to_string(port));
 
 			m_pConnection = std::make_unique<Connection<ID>>(
-				Connection<ID>::Owner::Client, m_Context, asio::ip::tcp::socket(m_Context), m_IncomingMessages
+				ConnectionOwner::DedicatedClient, m_Context, asio::ip::tcp::socket(m_Context), m_IncomingMessages
 			);
 
 			m_pConnection->ConnectToServer(endpoints);
@@ -44,13 +44,13 @@ namespace net
 		}
 		catch (const std::exception& crException)
 		{
-			std::cerr << "Client Exception: " << crException.what() << '\n';
+			std::cerr << "DedicatedClient Exception: " << crException.what() << '\n';
 			return false;
 		}
 	}
 
 	template<typename ID>
-	void Client<ID>::Disconnect()
+	void DedicatedClient<ID>::Disconnect()
 	{
 		if (m_pConnection)
 		{
@@ -63,13 +63,13 @@ namespace net
 	}
 
 	template<typename ID>
-	bool Client<ID>::IsConnected() const
+	bool DedicatedClient<ID>::IsConnected() const
 	{
 		return m_pConnection && m_pConnection->IsConnected();
 	}
 
 	template<typename ID>
-	void Client<ID>::Send(const Message<ID>& crMessage)
+	void DedicatedClient<ID>::Send(const Message<ID>& crMessage)
 	{
 		if (IsConnected())
 			m_pConnection->Send(crMessage);

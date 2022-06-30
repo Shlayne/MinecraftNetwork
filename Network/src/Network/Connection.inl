@@ -1,10 +1,21 @@
 namespace net
 {
+	std::ostream& operator<<(std::ostream& rOstream, ConnectionOwner owner)
+	{
+		switch (owner)
+		{
+			case ConnectionOwner::DedicatedServer: rOstream << "SERVER"; break;
+			case ConnectionOwner::DedicatedClient: rOstream << "CLIENT"; break;
+			case ConnectionOwner::PeerToPeerNode: rOstream << "P2PNODE"; break;
+		}
+		return rOstream;
+	}
+
 	template<typename ID>
-	Connection<ID>::Connection(Owner owner, asio::io_context& rContext, asio::ip::tcp::socket&& rrSocket, TSDeque<OwnedMessage<ID>>& rIncomingMessages)
+	Connection<ID>::Connection(ConnectionOwner owner, asio::io_context& rContext, asio::ip::tcp::socket&& rrSocket, TSDeque<OwnedMessage<ID>>& rIncomingMessages)
 		: m_Owner(owner), m_rContext(rContext), m_Socket(std::move(rrSocket)), m_rIncomingMessages(rIncomingMessages)
 	{
-		if (m_Owner == Owner::Server)
+		if (m_Owner == ConnectionOwner::DedicatedServer)
 		{
 			m_ValidationOut = static_cast<uint64_t>(std::chrono::system_clock::now().time_since_epoch().count());
 			m_ValidationCheck = Encrypt(m_ValidationOut);
@@ -14,7 +25,7 @@ namespace net
 	template<typename ID>
 	void Connection<ID>::ConnectToClient(IServer<ID>* pServer, uint32_t id)
 	{
-		if (m_Owner == Owner::Server)
+		if (m_Owner == ConnectionOwner::DedicatedServer)
 		{
 			if (IsConnected())
 			{
@@ -29,7 +40,7 @@ namespace net
 	template<typename ID>
 	void Connection<ID>::ConnectToServer(const asio::ip::tcp::resolver::results_type& crEndpoints)
 	{
-		if (m_Owner == Owner::Client)
+		if (m_Owner == ConnectionOwner::DedicatedClient)
 		{
 			asio::async_connect(m_Socket, crEndpoints,
 			[this](asio::error_code error, asio::ip::tcp::endpoint endpoint)
@@ -45,7 +56,7 @@ namespace net
 	{
 		if (IsConnected())
 		{
-			if (m_Owner == Owner::Server)
+			if (m_Owner != ConnectionOwner::DedicatedClient)
 				m_pServer->Disconnect(this->shared_from_this());
 			else
 				asio::post(m_rContext, [this]() { m_Socket.close(); });
@@ -109,7 +120,7 @@ namespace net
 			}
 			else
 			{
-				std::cerr << '[' << (m_Owner == Owner::Server ? "SERVER" : "CLIENT") << "] Read header failed for connection id " << m_ID << ": " << error.message() << '\n';
+				std::cerr << '[' << m_Owner << "] Read header failed for connection id " << m_ID << ": " << error.message() << '\n';
 				Disconnect();
 			}
 		});
@@ -125,7 +136,7 @@ namespace net
 				AddToIncomingMessageQueue();
 			else
 			{
-				std::cerr << '[' << (m_Owner == Owner::Server ? "SERVER" : "CLIENT") << "] Read body failed for connection id " << m_ID << ": " << error.message() << '\n';
+				std::cerr << '[' << m_Owner << "] Read body failed for connection id " << m_ID << ": " << error.message() << '\n';
 				Disconnect();
 			}
 		});
@@ -139,7 +150,7 @@ namespace net
 		{
 			if (!error)
 			{
-				if (m_Owner == Owner::Server)
+				if (m_Owner == ConnectionOwner::DedicatedServer)
 				{
 					if (m_ValidationIn == m_ValidationCheck)
 					{
@@ -156,7 +167,7 @@ namespace net
 						Disconnect();
 					}
 				}
-				else
+				else if (m_Owner == ConnectionOwner::DedicatedClient)
 				{
 					m_ValidationOut = Encrypt(m_ValidationIn);
 					WriteValidation();
@@ -164,7 +175,7 @@ namespace net
 			}
 			else
 			{
-				std::cerr << '[' << (m_Owner == Owner::Server ? "SERVER" : "CLIENT") << "] Read validation failed for connection id " << m_ID << ": " << error.message() << '\n';
+				std::cerr << '[' << m_Owner << "] Read validation failed for connection id " << m_ID << ": " << error.message() << '\n';
 				Disconnect();
 			}
 		});
@@ -189,7 +200,7 @@ namespace net
 			}
 			else
 			{
-				std::cerr << '[' << (m_Owner == Owner::Server ? "SERVER" : "CLIENT") << "] Write header failed for connection id " << m_ID << ": " << error.message() << '\n';
+				std::cerr << '[' << m_Owner << "] Write header failed for connection id " << m_ID << ": " << error.message() << '\n';
 				Disconnect();
 			}
 		});
@@ -209,7 +220,7 @@ namespace net
 			}
 			else
 			{
-				std::cerr << '[' << (m_Owner == Owner::Server ? "SERVER" : "CLIENT") << "] Write body failed for connection id " << m_ID << ": " << error.message() << '\n';
+				std::cerr << '[' << m_Owner << "] Write body failed for connection id " << m_ID << ": " << error.message() << '\n';
 				Disconnect();
 			}
 		});
@@ -223,12 +234,12 @@ namespace net
 		{
 			if (!error)
 			{
-				if (m_Owner == Owner::Client)
+				if (m_Owner == ConnectionOwner::DedicatedClient)
 					ReadHeader();
 			}
 			else
 			{
-				std::cerr << '[' << (m_Owner == Owner::Server ? "SERVER" : "CLIENT") << "] Write validation failed for connection id " << m_ID << ": " << error.message() << '\n';
+				std::cerr << '[' << m_Owner << "] Write validation failed for connection id " << m_ID << ": " << error.message() << '\n';
 				Disconnect();
 			}
 		});
@@ -237,7 +248,7 @@ namespace net
 	template<typename ID>
 	void Connection<ID>::AddToIncomingMessageQueue()
 	{
-		if (m_Owner == Owner::Server)
+		if (m_Owner != ConnectionOwner::DedicatedClient)
 			static_cast<void>(m_rIncomingMessages.EmplaceBack(this->shared_from_this(), m_TempIncomingMessage));
 		else
 			static_cast<void>(m_rIncomingMessages.EmplaceBack(nullptr, m_TempIncomingMessage));

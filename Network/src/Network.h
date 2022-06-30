@@ -5,5 +5,5 @@
 #include "Network/Message.h"
 #include "Network/TSDeque.h"
 
-#include "Network/Client.h"
+#include "Network/DedicatedClient.h"
 #include "Network/DedicatedServer.h"

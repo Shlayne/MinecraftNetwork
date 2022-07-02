@@ -1,52 +1,44 @@
+#include "Connection.h"
 namespace net
 {
-	std::ostream& operator<<(std::ostream& rOstream, ConnectionOwner owner)
-	{
-		switch (owner)
-		{
-			case ConnectionOwner::DedicatedServer: rOstream << "SERVER"; break;
-			case ConnectionOwner::DedicatedClient: rOstream << "CLIENT"; break;
-			case ConnectionOwner::PeerToPeerNode: rOstream << "P2PNODE"; break;
-		}
-		return rOstream;
-	}
-
 	template<typename ID>
 	Connection<ID>::Connection(ConnectionOwner owner, asio::io_context& rContext, asio::ip::tcp::socket&& rrSocket, TSDeque<OwnedMessage<ID>>& rIncomingMessages)
-		: m_Owner(owner), m_rContext(rContext), m_Socket(std::move(rrSocket)), m_rIncomingMessages(rIncomingMessages)
-	{
-		if (m_Owner == ConnectionOwner::DedicatedServer)
-		{
-			m_ValidationOut = static_cast<uint64_t>(std::chrono::system_clock::now().time_since_epoch().count());
-			m_ValidationCheck = Encrypt(m_ValidationOut);
-		}
-	}
+		: m_Owner(owner), m_rContext(rContext), m_Socket(std::move(rrSocket)), m_rIncomingMessages(rIncomingMessages) {}
 
 	template<typename ID>
-	void Connection<ID>::ConnectToClient(IServer<ID>* pServer, uint32_t id)
+	void Connection<ID>::ConnectToClient(IConnectable<ID>* pConnectable, uint32_t id)
 	{
-		if (m_Owner == ConnectionOwner::DedicatedServer)
+		if (IsConnected())
 		{
-			if (IsConnected())
+			if (m_Owner == ConnectionOwner::DedicatedServer)
 			{
+				m_pConnectable = pConnectable;
 				m_ID = id;
-				WriteValidation();
-				m_pServer = pServer;
-				ReadValidation();
+
+				m_ValidationOut = static_cast<uint64_t>(std::chrono::system_clock::now().time_since_epoch().count());
+				m_ValidationCheck = Encrypt(m_ValidationOut);
+				WriteValidation1();
 			}
 		}
 	}
 
 	template<typename ID>
-	void Connection<ID>::ConnectToServer(const asio::ip::tcp::resolver::results_type& crEndpoints)
+	void Connection<ID>::ConnectToServer(IConnectable<ID>* pConnectable, const asio::ip::tcp::resolver::results_type& crEndpoints)
 	{
 		if (m_Owner == ConnectionOwner::DedicatedClient)
 		{
+			m_pConnectable = pConnectable;
+
 			asio::async_connect(m_Socket, crEndpoints,
 			[this](asio::error_code error, asio::ip::tcp::endpoint endpoint)
 			{
 				if (!error)
-					ReadValidation();
+					ReadValidation1();
+				else
+				{
+					std::cerr << *this << " Connection failed.\n";
+					Disconnect();
+				}
 			});
 		}
 	}
@@ -54,19 +46,22 @@ namespace net
 	template<typename ID>
 	void Connection<ID>::Disconnect()
 	{
-		if (IsConnected())
-		{
-			if (m_Owner != ConnectionOwner::DedicatedClient)
-				m_pServer->Disconnect(this->shared_from_this());
-			else
-				asio::post(m_rContext, [this]() { m_Socket.close(); });
-		}
+		if (IsConnected() && m_pConnectable != nullptr)
+			m_pConnectable->Disconnect(this->shared_from_this());
+		else
+			asio::post(m_rContext, [this]() { m_Socket.close(); });
 	}
 
 	template<typename ID>
 	bool Connection<ID>::IsConnected() const
 	{
 		return m_Socket.is_open();
+	}
+
+	template<typename ID>
+	ConnectionOwner Connection<ID>::GetOwner() const
+	{
+		return m_Owner;
 	}
 
 	template<typename ID>
@@ -97,9 +92,25 @@ namespace net
 		// TODO: this is EXTREMELY EASY TO BRUTE-FORCE.
 		// Although it works fine for testing, use a cryptography library or knowledge from CS classes.
 		// Use public/private key thing.
-		data ^= 0xDEADBEEFC0DECAFE;
-		data = ((data & 0xF0F0F0F0F0F0F0F0) >> 4) | ((data & 0x0F0F0F0F0F0F0F0F) << 4);
-		return data ^ 0xC0DEFACE12345678;
+
+		switch (m_Owner)
+		{
+			case ConnectionOwner::DedicatedServer:
+			case ConnectionOwner::DedicatedClient:
+				data ^= 0xDEADBEEFC0DECAFE;
+				data = ((data & 0xF0F0F0F0F0F0F0F0) >> 4) | ((data & 0x0F0F0F0F0F0F0F0F) << 4);
+				data ^= 0xC0DEFACE12345678;
+				break;
+			// Have peer to peer nodes use different encryption to make sure
+			// they can't connect to servers and clients can't connect to them.
+			case ConnectionOwner::PeerToPeerNode:
+				data ^= 0xC0DECAFEDEADBEEF;
+				data = ((data & 0xF0F0F0F0F0F0F0F0) >> 4) | ((data & 0x0F0F0F0F0F0F0F0F) << 4);
+				data ^= 0x12345678C0DEFACE;
+				break;
+		}
+
+		return data;
 	}
 
 	template<typename ID>
@@ -120,7 +131,7 @@ namespace net
 			}
 			else
 			{
-				std::cerr << '[' << m_Owner << "] Read header failed for connection id " << m_ID << ": " << error.message() << '\n';
+				std::cerr << *this << " Read header failed: " << error.message() << '\n';
 				Disconnect();
 			}
 		});
@@ -136,49 +147,117 @@ namespace net
 				AddToIncomingMessageQueue();
 			else
 			{
-				std::cerr << '[' << m_Owner << "] Read body failed for connection id " << m_ID << ": " << error.message() << '\n';
+				std::cerr << *this << " Read body failed: " << error.message() << '\n';
 				Disconnect();
 			}
 		});
 	}
 
 	template<typename ID>
-	void Connection<ID>::ReadValidation()
+	void Connection<ID>::ReadValidation1()
 	{
-		asio::async_read(m_Socket, asio::buffer(&m_ValidationIn, sizeof(m_ValidationIn)),
-		[this](asio::error_code error, size_t size)
+		if (m_Owner == ConnectionOwner::DedicatedClient)
 		{
-			if (!error)
+			asio::async_read(m_Socket, asio::buffer(&m_ValidationIn, sizeof(m_ValidationIn)),
+			[this](asio::error_code error, size_t size)
 			{
-				if (m_Owner == ConnectionOwner::DedicatedServer)
+				if (!error)
+				{
+					m_ValidationOut = Encrypt(m_ValidationIn);
+					m_ValidationCheck = Encrypt(m_ValidationOut);
+					WriteValidation2();
+				}
+				else
+				{
+					std::cerr << *this << " Read validation 1 failed: " << error.message() << '\n';
+					Disconnect();
+				}
+			});
+		}
+	}
+
+	template<typename ID>
+	void Connection<ID>::ReadValidation2()
+	{
+		if (m_Owner == ConnectionOwner::DedicatedServer)
+		{
+			asio::async_read(m_Socket, asio::buffer(&m_ValidationIn, sizeof(m_ValidationIn)),
+			[this](asio::error_code error, size_t size)
+			{
+				if (!error)
 				{
 					if (m_ValidationIn == m_ValidationCheck)
 					{
-						std::cout << "[SERVER] Client " << m_ID << " validated.\n";
-						m_pServer->OnValidate(this->shared_from_this());
-						ReadHeader();
+						m_pConnectable->OnValidate(this->shared_from_this());
+
+						// Successfully validated client, so validate self.
+						m_ValidationOut = Encrypt(m_ValidationIn);
+						WriteValidation3();
 					}
 					else
 					{
-						std::cout << "[SERVER] Client " << m_ID << " invalidated.\n";
-						m_pServer->OnInvalidate(this->shared_from_this());
+						m_pConnectable->OnInvalidate(this->shared_from_this());
 						// Has to be async work so any messages the server implementation sends in
 						// OnClientInvalidate can be sent before the connection is closed.
 						Disconnect();
 					}
 				}
-				else if (m_Owner == ConnectionOwner::DedicatedClient)
+				else
 				{
-					m_ValidationOut = Encrypt(m_ValidationIn);
-					WriteValidation();
+					std::cerr << *this << " Read validation 2 failed: " << error.message() << '\n';
+					Disconnect();
 				}
-			}
-			else
+			});
+		}
+	}
+
+	template<typename ID>
+	void Connection<ID>::ReadValidation3()
+	{
+		if (m_Owner == ConnectionOwner::DedicatedClient)
+		{
+			asio::async_read(m_Socket, asio::buffer(&m_ValidationIn, sizeof(m_ValidationIn)),
+			[this](asio::error_code error, size_t size)
 			{
-				std::cerr << '[' << m_Owner << "] Read validation failed for connection id " << m_ID << ": " << error.message() << '\n';
-				Disconnect();
-			}
-		});
+				if (!error)
+				{
+					if (m_ValidationIn == m_ValidationCheck)
+						ReadValidation4();
+					else
+					{
+						m_pConnectable->OnInvalidate(this->shared_from_this());
+						Disconnect();
+					}
+				}
+				else
+				{
+					std::cerr << *this << " Read validation 3 failed: " << error.message() << '\n';
+					Disconnect();
+				}
+			});
+		}
+	}
+
+	template<typename ID>
+	void Connection<ID>::ReadValidation4()
+	{
+		if (m_Owner == ConnectionOwner::DedicatedClient)
+		{
+			asio::async_read(m_Socket, asio::buffer(&m_ID, sizeof(m_ID)),
+			[this](asio::error_code error, size_t size)
+			{
+				if (!error)
+				{
+					m_pConnectable->OnValidate(this->shared_from_this());
+					ReadHeader();
+				}
+				else
+				{
+					std::cerr << *this << " Read validation 4 failed: " << error.message() << '\n';
+					Disconnect();
+				}
+			});
+		}
 	}
 
 	template<typename ID>
@@ -200,7 +279,7 @@ namespace net
 			}
 			else
 			{
-				std::cerr << '[' << m_Owner << "] Write header failed for connection id " << m_ID << ": " << error.message() << '\n';
+				std::cerr << *this << " Write header failed: " << error.message() << '\n';
 				Disconnect();
 			}
 		});
@@ -220,29 +299,90 @@ namespace net
 			}
 			else
 			{
-				std::cerr << '[' << m_Owner << "] Write body failed for connection id " << m_ID << ": " << error.message() << '\n';
+				std::cerr << *this << " Write body failed: " << error.message() << '\n';
 				Disconnect();
 			}
 		});
 	}
 
 	template<typename ID>
-	void Connection<ID>::WriteValidation()
+	void Connection<ID>::WriteValidation1()
 	{
-		asio::async_write(m_Socket, asio::buffer(&m_ValidationOut, sizeof(m_ValidationOut)),
-		[this](asio::error_code error, size_t size)
+		if (m_Owner == ConnectionOwner::DedicatedServer)
 		{
-			if (!error)
+			asio::async_write(m_Socket, asio::buffer(&m_ValidationOut, sizeof(m_ValidationOut)),
+			[this](asio::error_code error, size_t size)
 			{
-				if (m_Owner == ConnectionOwner::DedicatedClient)
+				if (!error)
+					ReadValidation2();
+				else
+				{
+					std::cerr << *this << " Write validation 1 failed: " << error.message() << '\n';
+					Disconnect();
+				}
+			});
+		}
+	}
+
+	template<typename ID>
+	void Connection<ID>::WriteValidation2()
+	{
+		if (m_Owner == ConnectionOwner::DedicatedClient)
+		{
+			asio::async_write(m_Socket, asio::buffer(&m_ValidationOut, sizeof(m_ValidationOut)),
+			[this](asio::error_code error, size_t size)
+			{
+				if (!error)
+					ReadValidation3();
+				else
+				{
+					std::cerr << *this << " Write validation 2 failed: " << error.message() << '\n';
+					Disconnect();
+				}
+			});
+		}
+	}
+
+	template<typename ID>
+	void Connection<ID>::WriteValidation3()
+	{
+		if (m_Owner == ConnectionOwner::DedicatedServer)
+		{
+			asio::async_write(m_Socket, asio::buffer(&m_ValidationOut, sizeof(m_ValidationOut)),
+			[this](asio::error_code error, size_t size)
+			{
+				if (!error)
+					WriteValidation4();
+				else
+				{
+					std::cerr << *this << " Write validation 3 failed: " << error.message() << '\n';
+					Disconnect();
+				}
+			});
+		}
+	}
+
+	template<typename ID>
+	void Connection<ID>::WriteValidation4()
+	{
+		if (m_Owner == ConnectionOwner::DedicatedServer)
+		{
+			asio::async_write(m_Socket, asio::buffer(&m_ID, sizeof(m_ID)),
+			[this](asio::error_code error, size_t size)
+			{
+				if (!error)
+				{
+					// Assume successful bidirectional validation, so begin normal operation.
+					// If client invalidates us, asio will have this fail and disconnect will be called.
 					ReadHeader();
-			}
-			else
-			{
-				std::cerr << '[' << m_Owner << "] Write validation failed for connection id " << m_ID << ": " << error.message() << '\n';
-				Disconnect();
-			}
-		});
+				}
+				else
+				{
+					std::cerr << *this << " Write validation 4 failed: " << error.message() << '\n';
+					Disconnect();
+				}
+			});
+		}
 	}
 
 	template<typename ID>
@@ -257,5 +397,19 @@ namespace net
 		m_TempIncomingMessage.header.size = 0;
 
 		ReadHeader();
+	}
+
+	template<typename ID>
+	std::ostream& operator<<(std::ostream& rOstream, const Connection<ID>& crConnection)
+	{
+		switch (crConnection.GetOwner())
+		{
+			case ConnectionOwner::DedicatedServer: rOstream << "[SERVER>CLIENT" << crConnection.GetID() << ']'; break;
+			case ConnectionOwner::DedicatedClient: rOstream << "[CLIENT" << crConnection.GetID() << ">SERVER]"; break;
+			// TODO: Figure out ID system for P2P network.
+			case ConnectionOwner::PeerToPeerNode: rOstream << "[P2PNODE" << crConnection.GetID() << ">P2PNODE]"; break;
+		}
+
+		return rOstream;
 	}
 }

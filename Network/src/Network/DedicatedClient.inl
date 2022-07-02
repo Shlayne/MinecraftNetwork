@@ -1,3 +1,4 @@
+#include "DedicatedClient.h"
 namespace net
 {
 	template<typename ID>
@@ -31,14 +32,17 @@ namespace net
 		try
 		{
 			asio::ip::tcp::resolver resolver(m_Context);
+			// asio resolver resolves to an additional endpoint for localhost: "::1"
+			// which fails to connect every time and way I've tried.
+			if (address == "localhost") address = "127.0.0.1";
 			auto endpoints = resolver.resolve(address, std::to_string(port));
 
 			m_pConnection = std::make_unique<Connection<ID>>(
 				ConnectionOwner::DedicatedClient, m_Context, asio::ip::tcp::socket(m_Context), m_IncomingMessages
 			);
 
-			m_pConnection->ConnectToServer(endpoints);
-			m_ContextThread = std::thread([this]() { m_Context.run(); });
+			m_pConnection->ConnectToServer(this, endpoints);
+			m_ContextThread = std::thread([this]() { static_cast<void>(m_Context.run()); m_Context.restart(); });
 
 			return true;
 		}
@@ -73,5 +77,21 @@ namespace net
 	{
 		if (IsConnected())
 			m_pConnection->Send(crMessage);
+	}
+
+	template<typename ID>
+	void DedicatedClient<ID>::Disconnect(std::shared_ptr<Connection<ID>> pConnection)
+	{
+		asio::post(m_Context, [this]() { m_Socket.close(); });
+	}
+
+	template<typename ID>
+	std::ostream& operator<<(std::ostream& rOstream, const DedicatedClient<ID>& crDedicatedClient)
+	{
+		if (crDedicatedClient.IsConnected())
+			rOstream << *crDedicatedClient.m_pConnection;
+		else
+			rOstream << "[CLIENT]";
+		return rOstream;
 	}
 }

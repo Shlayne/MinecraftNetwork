@@ -7,29 +7,23 @@ public:
 public:
 	virtual void OnValidate(std::shared_ptr<net::Connection<MessageType>> pConnection) override
 	{
-		net::Message<MessageType> message = MessageType::Server_ValidatedClient;
-		message << pConnection->GetID();
-		pConnection->Send(message);
+		std::cout << *pConnection << " Validated.\n";
 	}
 
 	virtual void OnInvalidate(std::shared_ptr<net::Connection<MessageType>> pConnection) override
 	{
-		net::Message<MessageType> message = MessageType::Server_InvalidatedClient;
-		pConnection->Send(message);
+		std::cout << *pConnection << " Invalidated.\n";
 	}
 protected:
 	virtual bool OnConnect(std::shared_ptr<net::Connection<MessageType>> pConnection) override
 	{
-		net::Message<MessageType> message = MessageType::Server_AcceptClient;
-		pConnection->Send(message);
-
 		// Could implement exclude list by checking the client's ip address.
 		return true;
 	}
 
 	virtual void OnDisconnect(std::shared_ptr<net::Connection<MessageType>> pConnection) override
 	{
-		std::cout << "[SERVER] Client " << pConnection->GetID() << " disconnected.\n";
+		std::cout << *pConnection << " Disconnected.\n";
 	}
 
 	virtual void OnMessage(std::shared_ptr<net::Connection<MessageType>> pConnection, net::Message<MessageType>& rMessage) override
@@ -38,13 +32,13 @@ protected:
 		{
 			case MessageType::Client_PingServer:
 			{
-				std::cout << "[SERVER] Client " << pConnection->GetID() << " ping bouncing.\n";
+				std::cout << *pConnection << " Ping bouncing.\n";
 				pConnection->Send(rMessage);
 				break;
 			}
 			case MessageType::Client_MessageOtherClients:
 			{
-				std::cout << "[SERVER] Client " << pConnection->GetID() << " messaging other clients.\n";
+				std::cout << *pConnection << " Messaging other clients.\n";
 				rMessage << pConnection->GetID();
 				MessageAll(rMessage, pConnection);
 				break;

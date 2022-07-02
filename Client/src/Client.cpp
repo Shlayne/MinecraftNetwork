@@ -8,23 +8,26 @@ public:
 	{
 		net::Message<MessageType> message = MessageType::Client_PingServer;
 		message << std::chrono::system_clock::now();
-		std::cout << "[CLIENT:" << GetID() << "] Pinging server...\n";
+		std::cout << *this << " Pinging server...\n";
 		Send(message);
 	}
 
 	void MessageOtherClients()
 	{
 		net::Message<MessageType> message = MessageType::Client_MessageOtherClients;
-		std::cout << "[CLIENT:" << GetID() << "] Messaging other clients...\n";
+		std::cout << *this << " Messaging other clients...\n";
 		Send(message);
 	}
+protected:
+	virtual void OnValidate(std::shared_ptr<net::Connection<MessageType>> pConnection) override
+	{
+		std::cout << *this << " Validated server.\n";
+	}
 
-	// Local copy of assigned id.
-public:
-	uint32_t GetID() const { return m_ID; }
-	void SetID(uint32_t id) { m_ID = id; }
-private:
-	uint32_t m_ID = 0;
+	virtual void OnInvalidate(std::shared_ptr<net::Connection<MessageType>> pConnection) override
+	{
+		std::cout << *this << " Invalidated server.\n";
+	}
 };
 
 int main()
@@ -83,32 +86,19 @@ int main()
 				{
 					std::chrono::system_clock::time_point start;
 					message >> start;
-					std::cout << "[CLIENT:" << client.GetID() << "] Ping: " << std::chrono::duration<double>(std::chrono::system_clock::now() - start).count() << '\n';
+					std::cout << client << " Ping: " << std::chrono::duration<double>(std::chrono::system_clock::now() - start).count() << '\n';
 					break;
 				}
 				case MessageType::Client_MessageOtherClients:
 				{
 					uint32_t id;
 					message >> id;
-					std::cout << "[CLIENT:" << client.GetID() << "] Message received from client " << id << ".\n";
-					break;
-				}
-				case MessageType::Server_AcceptClient:
-				{
-					std::cout << "[CLIENT] Server accepted connection.\n";
+					std::cout << client << " Message received from client " << id << ".\n";
 					break;
 				}
 				case MessageType::Server_ValidatedClient:
 				{
-					uint32_t id;
-					message >> id;
-					client.SetID(id);
-					std::cout << "[CLIENT:" << client.GetID() << "] Server validated connection.\n";
-					break;
-				}
-				case MessageType::Server_InvalidatedClient:
-				{
-					std::cout << "[CLIENT] Server invalidated connection.\n";
+					std::cout << client << " Server validated connection.\n";
 					break;
 				}
 			}
@@ -116,7 +106,7 @@ int main()
 	}
 
 	client.Disconnect();
-	std::cout << "[CLIENT] Disconnected.\n";
+	std::cout << client << " Disconnected.\n";
 	std::cin.get();
 
 	return 0;

@@ -4,6 +4,7 @@
 #include "Network/Message.h"
 #include "Network/TSDeque.h"
 #include "Network/Connection.h"
+#include "Network/IServer.h"
 
 namespace net
 {
@@ -21,15 +22,8 @@ namespace net
 	public:
 		virtual void MessageOne(std::shared_ptr<Connection<ID>> pConnection, const Message<ID>& crMessage) override final;
 		virtual void MessageAll(const Message<ID>& crMessage, std::shared_ptr<Connection<ID>> pConnectionIgnored = nullptr) override final;
-		virtual void Disconnect(std::shared_ptr<Connection<ID>> pConnection) override final;
-	public:
-		virtual void OnValidate(std::shared_ptr<Connection<ID>> pConnection) override;
-		virtual void OnInvalidate(std::shared_ptr<Connection<ID>> pConnection) override;
 	protected:
-		// Return false to reject the connection, true to approve.
-		virtual bool OnConnect(std::shared_ptr<Connection<ID>> pConnection) override;
-		virtual void OnDisconnect(std::shared_ptr<Connection<ID>> pConnection) override;
-		virtual void OnMessage(std::shared_ptr<Connection<ID>> pConnection, Message<ID>& rMessage) override;
+		virtual void Disconnect(std::shared_ptr<Connection<ID>> pConnection) override final;
 	private:
 		void WaitForClientConnection();
 	private:
@@ -39,7 +33,7 @@ namespace net
 		uint16_t m_Port = 0;
 		TSDeque<OwnedMessage<ID>> m_IncomingMessages;
 		std::deque<std::shared_ptr<Connection<ID>>> m_Clients;
-		uint32_t m_NextClientID = 1;
+		uint32_t m_NextClientID = 1; // TODO: make a uint64_t
 	};
 }
 

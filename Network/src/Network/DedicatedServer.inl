@@ -20,7 +20,7 @@ namespace net
 		try
 		{
 			WaitForClientConnection();
-			m_ContextThread = std::thread([this]() { m_Context.run(); });
+			m_ContextThread = std::thread([this]() { static_cast<void>(m_Context.run()); m_Context.restart(); });
 
 			std::cout << "[SERVER] Started on port " << +m_Port << ".\n";
 			return true;
@@ -51,7 +51,7 @@ namespace net
 		while (messageCount-- && !m_IncomingMessages.Empty())
 		{
 			OwnedMessage<ID> message = std::move(m_IncomingMessages.PopFront());
-			OnMessage(message.remoteConnection, message.message);
+			this->OnMessage(message.remoteConnection, message.message);
 		}
 	}
 
@@ -85,7 +85,7 @@ namespace net
 			else
 			{
 				clientsRemoved = true;
-				OnDisconnect(rpClient);
+				this->OnDisconnect(rpClient);
 				rpClient.reset();
 			}
 		}
@@ -97,25 +97,10 @@ namespace net
 	template<typename ID>
 	void DedicatedServer<ID>::Disconnect(std::shared_ptr<Connection<ID>> pConnection)
 	{
-		OnDisconnect(pConnection);
+		this->OnDisconnect(pConnection);
+		std::erase_if(m_Clients, [&pConnection](const auto& crpClient) { return crpClient.get() == pConnection.get(); });
 		pConnection.reset();
-		std::erase_if(m_Clients, [](const auto& crpClient) { return crpClient == nullptr; });
 	}
-
-	template<typename ID>
-	void DedicatedServer<ID>::OnValidate(std::shared_ptr<Connection<ID>> pConnection) {}
-
-	template<typename ID>
-	void DedicatedServer<ID>::OnInvalidate(std::shared_ptr<Connection<ID>> pConnection) {}
-
-	template<typename ID>
-	bool DedicatedServer<ID>::OnConnect(std::shared_ptr<Connection<ID>> pConnection) { return true; }
-
-	template<typename ID>
-	void DedicatedServer<ID>::OnDisconnect(std::shared_ptr<Connection<ID>> pConnection) {}
-
-	template<typename ID>
-	void DedicatedServer<ID>::OnMessage(std::shared_ptr<Connection<ID>> pConnection, Message<ID>& rMessage) {}
 
 	template<typename ID>
 	void DedicatedServer<ID>::WaitForClientConnection()
@@ -130,11 +115,11 @@ namespace net
 					ConnectionOwner::DedicatedServer, m_Context, std::move(socket), m_IncomingMessages
 				);
 
-				if (OnConnect(newConnection))
+				if (this->OnConnect(newConnection))
 				{
 					m_Clients.push_back(std::move(newConnection));
-					m_Clients.back()->ConnectToClient(this, m_NextClientID);
-					std::cout << "[SERVER] Client " << m_NextClientID++ << " connected.\n";
+					m_Clients.back()->ConnectToClient(this, m_NextClientID++);
+					std::cout << *m_Clients.back() << " Connected.\n";
 				}
 				else
 					std::cout << "[SERVER] Connection denied.\n";

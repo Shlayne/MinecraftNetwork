@@ -6,7 +6,7 @@ namespace net
 		: m_Owner(owner), m_rContext(rContext), m_Socket(std::move(rrSocket)), m_rIncomingMessages(rIncomingMessages) {}
 
 	template<typename ID>
-	void Connection<ID>::ConnectToClient(IConnectable<ID>* pConnectable, uint32_t id)
+	void Connection<ID>::ConnectToClient(IConnectable<ID>* pConnectable, uint64_t id)
 	{
 		if (IsConnected())
 		{
@@ -65,7 +65,7 @@ namespace net
 	}
 
 	template<typename ID>
-	uint32_t Connection<ID>::GetID() const
+	uint64_t Connection<ID>::GetID() const
 	{
 		return m_ID;
 	}

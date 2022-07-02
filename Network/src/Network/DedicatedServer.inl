@@ -98,7 +98,7 @@ namespace net
 	void DedicatedServer<ID>::Disconnect(std::shared_ptr<Connection<ID>> pConnection)
 	{
 		this->OnDisconnect(pConnection);
-		std::erase_if(m_Clients, [&pConnection](const auto& crpClient) { return crpClient.get() == pConnection.get(); });
+		std::erase_if(m_Clients, [&pConnection](const auto& crpClient) { return crpClient == pConnection; });
 		pConnection.reset();
 	}
 

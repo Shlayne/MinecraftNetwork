@@ -16,13 +16,13 @@ namespace net
 	public:
 		Connection(ConnectionOwner owner, asio::io_context& rContext, asio::ip::tcp::socket&& rrSocket, TSDeque<OwnedMessage<ID>>& rIncomingMessages);
 	public:
-		void ConnectToClient(IConnectable<ID>* pConnectable, uint32_t id = 0);
+		void ConnectToClient(IConnectable<ID>* pConnectable, uint64_t id = 0);
 		void ConnectToServer(IConnectable<ID>* pConnectable, const asio::ip::tcp::resolver::results_type& crEndpoints);
 		void Disconnect();
 		bool IsConnected() const;
 	public:
 		ConnectionOwner GetOwner() const;
-		uint32_t GetID() const;
+		uint64_t GetID() const;
 		void Send(const Message<ID>& crMessage);
 	public:
 		uint64_t Encrypt(uint64_t data) const;
@@ -48,7 +48,7 @@ namespace net
 		TSDeque<Message<ID>> m_OutgoingMessages;
 		TSDeque<OwnedMessage<ID>>& m_rIncomingMessages;
 		Message<ID> m_TempIncomingMessage;
-		uint32_t m_ID = 0;
+		uint64_t m_ID = 0;
 		IConnectable<ID>* m_pConnectable = nullptr;
 	private:
 		uint64_t m_ValidationIn = 0;

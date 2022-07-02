@@ -33,7 +33,7 @@ namespace net
 		uint16_t m_Port = 0;
 		TSDeque<OwnedMessage<ID>> m_IncomingMessages;
 		std::deque<std::shared_ptr<Connection<ID>>> m_Clients;
-		uint32_t m_NextClientID = 1; // TODO: make a uint64_t
+		uint64_t m_NextClientID = 1;
 	};
 }
 

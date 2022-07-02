@@ -34,13 +34,15 @@ namespace net
 		bool Empty() const;
 		void Clear();
 	public:
+		void StopWaiting();
 		void Wait();
 	private:
 		mutable std::mutex m_DequeMutex;
 		std::deque<Data> m_Deque;
 		std::mutex m_ContidionMutex;
 		std::condition_variable m_Contidion;
-		std::atomic_bool m_ForceExit = false;
+		// TODO: Does this actually need to be atomic?
+		std::atomic_bool m_StopWaiting = false;
 	};
 }
 

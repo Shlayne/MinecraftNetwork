@@ -15,15 +15,13 @@ namespace net
 		DedicatedClient();
 		virtual ~DedicatedClient();
 	public:
-		virtual TSDeque<OwnedMessage<ID>>& GetIncomingMessageQueue() override final;
-		virtual const TSDeque<OwnedMessage<ID>>& GetIncomingMessageQueue() const override final;
-	public:
 		virtual bool Connect(std::string_view address, uint16_t port) override final;
 		virtual void Disconnect() override final;
 		virtual bool IsConnected() const override final;
 	public:
+		virtual void PollMessages(size_t messageCount = -1, bool waitForMessage = false) override final;
 		virtual void Send(const Message<ID>& crMessage) override final;
-	protected:
+	private:
 		virtual void Disconnect(std::shared_ptr<Connection<ID>> pConnection) override final;
 	private:
 		asio::io_context m_Context;

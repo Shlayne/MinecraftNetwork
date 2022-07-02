@@ -4,7 +4,13 @@ class DedicatedServer : public net::DedicatedServer<MessageType>
 {
 public:
 	DedicatedServer(uint16_t port = 0) : net::DedicatedServer<MessageType>(port) {}
-public:
+protected:
+	virtual bool AllowConnection(std::shared_ptr<net::Connection<MessageType>> pConnection) override
+	{
+		// Could implement exclude list by checking the client's ip address.
+		return true;
+	}
+
 	virtual void OnValidate(std::shared_ptr<net::Connection<MessageType>> pConnection) override
 	{
 		std::cout << *pConnection << " Validated.\n";
@@ -14,11 +20,10 @@ public:
 	{
 		std::cout << *pConnection << " Invalidated.\n";
 	}
-protected:
-	virtual bool OnConnect(std::shared_ptr<net::Connection<MessageType>> pConnection) override
+
+	virtual void OnConnect(std::shared_ptr<net::Connection<MessageType>> pConnection) override
 	{
-		// Could implement exclude list by checking the client's ip address.
-		return true;
+		std::cout << *pConnection << " Connected.\n";
 	}
 
 	virtual void OnDisconnect(std::shared_ptr<net::Connection<MessageType>> pConnection) override
@@ -53,7 +58,7 @@ int main()
 	server.Start();
 
 	while (true)
-		server.Update(-1, true);
+		server.PollMessages(-1, true);
 
 	std::cout << "[SERVER] Closed.\n";
 	std::cin.get();

@@ -10,18 +10,22 @@ namespace net
 	class IConnectable
 	{
 	public:
-		virtual ~IConnectable() = default;
+		virtual void PollMessages(size_t messageCount = -1, bool waitForMessage = false) = 0;
 	protected:
 		friend class Connection<ID>;
+
+		virtual ~IConnectable() = default;
+
+		virtual bool AllowConnection(std::shared_ptr<Connection<ID>> pConnection) { return true; }
+
 		virtual void Disconnect(std::shared_ptr<Connection<ID>> pConnection) = 0;
-	protected:
-		// Can't message from these two.
+
+		virtual void OnConnect(std::shared_ptr<Connection<ID>> pConnection) {}
+		virtual void OnDisconnect(std::shared_ptr<Connection<ID>> pConnection) {}
+
 		virtual void OnValidate(std::shared_ptr<Connection<ID>> pConnection) {}
 		virtual void OnInvalidate(std::shared_ptr<Connection<ID>> pConnection) {}
-	protected:
-		// Return false to reject the connection, true to approve.
-		virtual bool OnConnect(std::shared_ptr<Connection<ID>> pConnection) { return true; }
-		virtual void OnDisconnect(std::shared_ptr<Connection<ID>> pConnection) {}
+
 		virtual void OnMessage(std::shared_ptr<Connection<ID>> pConnection, Message<ID>& rMessage) {}
 	};
 }

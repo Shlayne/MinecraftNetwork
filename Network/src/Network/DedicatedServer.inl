@@ -3,10 +3,7 @@ namespace net
 	template<typename ID>
 	DedicatedServer<ID>::DedicatedServer(uint16_t port)
 		: m_Acceptor(m_Context, asio::ip::tcp::endpoint(asio::ip::tcp::v4(), port))
-		, m_Port(m_Acceptor.local_endpoint().port())
-	{
-
-	}
+		, m_Port(m_Acceptor.local_endpoint().port()) {}
 
 	template<typename ID>
 	DedicatedServer<ID>::~DedicatedServer()
@@ -43,7 +40,13 @@ namespace net
 	}
 
 	template<typename ID>
-	void DedicatedServer<ID>::Update(size_t messageCount, bool waitForMessage)
+	uint16_t DedicatedServer<ID>::GetPort() const
+	{
+		return m_Port;
+	}
+
+	template<typename ID>
+	void DedicatedServer<ID>::PollMessages(size_t messageCount, bool waitForMessage)
 	{
 		if (waitForMessage)
 			m_IncomingMessages.Wait();
@@ -53,12 +56,6 @@ namespace net
 			OwnedMessage<ID> message = std::move(m_IncomingMessages.PopFront());
 			this->OnMessage(message.remoteConnection, message.message);
 		}
-	}
-
-	template<typename ID>
-	uint16_t DedicatedServer<ID>::GetPort() const
-	{
-		return m_Port;
 	}
 
 	template<typename ID>
@@ -98,7 +95,7 @@ namespace net
 	void DedicatedServer<ID>::Disconnect(std::shared_ptr<Connection<ID>> pConnection)
 	{
 		this->OnDisconnect(pConnection);
-		std::erase_if(m_Clients, [&pConnection](const auto& crpClient) { return crpClient == pConnection; });
+		std::erase_if(m_Clients, [&pConnection](const auto& crpClient) { return crpClient == nullptr || crpClient == pConnection; });
 		pConnection.reset();
 	}
 
@@ -115,17 +112,17 @@ namespace net
 					ConnectionOwner::DedicatedServer, m_Context, std::move(socket), m_IncomingMessages
 				);
 
-				if (this->OnConnect(newConnection))
+				if (this->AllowConnection(newConnection))
 				{
 					m_Clients.push_back(std::move(newConnection));
 					m_Clients.back()->ConnectToClient(this, m_NextClientID++);
-					std::cout << *m_Clients.back() << " Connected.\n";
+					this->OnConnect(m_Clients.back());
 				}
 				else
 					std::cout << "[SERVER] Connection denied.\n";
 			}
 			else
-				std::cerr << "[SERVER] New connection error: " << error.message() << '\n';
+				std::cerr << "[SERVER] New connection failed: " << error.message() << '\n';
 
 			WaitForClientConnection();
 		});

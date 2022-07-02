@@ -46,10 +46,13 @@ namespace net
 	template<typename ID>
 	void Connection<ID>::Disconnect()
 	{
-		if (IsConnected() && m_pConnectable != nullptr)
-			m_pConnectable->Disconnect(this->shared_from_this());
-		else
-			asio::post(m_rContext, [this]() { m_Socket.close(); });
+		if (IsConnected())
+		{
+			if (m_pConnectable != nullptr)
+				m_pConnectable->Disconnect(this->shared_from_this());
+			else
+				asio::post(m_rContext, [this]() { m_Socket.close(); });
+		}
 	}
 
 	template<typename ID>
@@ -73,15 +76,11 @@ namespace net
 	template<typename ID>
 	void Connection<ID>::Send(const Message<ID>& crMessage)
 	{
-		// TODO: use std::shared_ptr<Message<ID>> instead of const Message<ID>&
-		// because this lambda COPIES THE ENTIRE MESSAGE, because it needs the
-		// message to be alive whenever asio calls it.
-		asio::post(m_rContext,
-		[this, crMessage]()
+		asio::post(m_rContext, [this, crMessage]()
 		{
-			bool alreadyWritingMessage = !m_OutgoingMessages.Empty();
+			bool notWritingMessage = m_OutgoingMessages.Empty();
 			m_OutgoingMessages.PushBack(crMessage);
-			if (!alreadyWritingMessage)
+			if (notWritingMessage)
 				WriteHeader();
 		});
 	}

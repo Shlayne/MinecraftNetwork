@@ -17,12 +17,12 @@ namespace net
 	public:
 		virtual bool Start() override final;
 		virtual void Stop() override final;
-		virtual void Update(size_t messageCount = -1, bool waitForMessage = false) override final;
 		uint16_t GetPort() const;
 	public:
+		virtual void PollMessages(size_t messageCount = -1, bool waitForMessage = false) override final;
 		virtual void MessageOne(std::shared_ptr<Connection<ID>> pConnection, const Message<ID>& crMessage) override final;
 		virtual void MessageAll(const Message<ID>& crMessage, std::shared_ptr<Connection<ID>> pConnectionIgnored = nullptr) override final;
-	protected:
+	private:
 		virtual void Disconnect(std::shared_ptr<Connection<ID>> pConnection) override final;
 	private:
 		void WaitForClientConnection();

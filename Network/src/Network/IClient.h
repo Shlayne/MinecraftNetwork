@@ -13,9 +13,6 @@ namespace net
 	public:
 		virtual ~IClient() = default;
 	public:
-		virtual TSDeque<OwnedMessage<ID>>& GetIncomingMessageQueue() = 0;
-		virtual const TSDeque<OwnedMessage<ID>>& GetIncomingMessageQueue() const = 0;
-	public:
 		virtual bool Connect(std::string_view address, uint16_t port) = 0;
 		virtual void Disconnect() = 0;
 		virtual bool IsConnected() const = 0;

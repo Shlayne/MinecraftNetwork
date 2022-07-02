@@ -1,15 +1,11 @@
 namespace net
 {
 	template<typename ID>
-	MessageHeader<ID>::MessageHeader(ID id)
+	constexpr MessageHeader<ID>::MessageHeader(ID id) noexcept
 		: id(id) {}
 
 	template<typename ID>
-	Message<ID>::Message(MessageHeader<ID> header)
-		: header(header) {}
-
-	template<typename ID>
-	Message<ID>::Message(ID id)
+	Message<ID>::Message(ID id) noexcept
 		: header(id) {}
 
 	template<typename ID>
@@ -18,7 +14,7 @@ namespace net
 
 	template<typename ID>
 	Message<ID>::Message(Message&& rrMessage) noexcept
-		: header(std::move(rrMessage.header)), body(std::move(rrMessage.body)) {}
+		: header(rrMessage.header), body(std::move(rrMessage.body)) {}
 
 	template<typename ID>
 	Message<ID>& Message<ID>::operator=(const Message& crMessage)
@@ -36,14 +32,14 @@ namespace net
 	{
 		if (this != &rrMessage)
 		{
-			header = std::move(rrMessage.header);
+			header = rrMessage.header;
 			body = std::move(rrMessage.body);
 		}
 		return *this;
 	}
 
 	template<typename ID>
-	constexpr size_t Message<ID>::Size() const
+	constexpr std::vector<uint8_t>::size_type Message<ID>::Size() const
 	{
 		return header.size;
 	}

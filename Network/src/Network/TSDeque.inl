@@ -3,11 +3,8 @@ namespace net
 	template<typename Data>
 	TSDeque<Data>::~TSDeque()
 	{
+		StopWaiting();
 		Clear();
-
-		std::unique_lock<std::mutex> conditionLock(m_ContidionMutex);
-		m_ForceExit = true;
-		m_Contidion.notify_one();
 	}
 
 	template<typename Data>
@@ -144,9 +141,17 @@ namespace net
 	}
 
 	template<typename Data>
+	void TSDeque<Data>::StopWaiting()
+	{
+		std::unique_lock<std::mutex> conditionLock(m_ContidionMutex);
+		m_StopWaiting = true;
+		m_Contidion.notify_one();
+	}
+
+	template<typename Data>
 	void TSDeque<Data>::Wait()
 	{
-		while (Empty() && !m_ForceExit)
+		while (Empty() && !m_StopWaiting)
 		{
 			std::unique_lock<std::mutex> conditionLock(m_ContidionMutex);
 			m_Contidion.wait(conditionLock);

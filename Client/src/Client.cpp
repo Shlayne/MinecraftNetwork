@@ -67,11 +67,17 @@ protected:
 	}
 };
 
+#define USE_LOCALHOST 1
+
 int main()
 {
+#if !USE_LOCALHOST
 	std::cout << "Enter IP Address: ";
 	std::string address;
 	std::getline(std::cin, address);
+#else
+	constexpr std::string_view address = "localhost";
+#endif
 
 	std::cout << "Enter Port Number: ";
 	std::string portString;
